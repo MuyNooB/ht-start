@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+  <style>
+    div {
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    #view1 {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 50%;
+      height: 400px;
+      border: 2px solid #4080BF;
+    }
+    #view2 {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 50%;
+      height: 400px;
+      border: 2px solid #4080BF;
+    }
+    table {
+      border-collapse: collapse;
+      border-spacing: 0px;
+    }
+    table, th, td {
+      padding: 5px;
+      border: 1px solid black;
+    }
+    #view3 {
+      position: absolute;
+      top: 410px;
+      right: 0;
+      width: 100%;
+      height: 300px;
+      border: 2px solid #4080BF;
+    }
+  </style>
+</head>
+<body onload = init()>
+  <div id="view1"></div>
+  <div id="view2"></div>
+  <div id='view3'></div>
+  <script>
+    class View{
+      constructor(model){
+        this._view = document.createElement('div');
+        const style = this._view.style;
+        style.position = 'absolute';
+        style.top = 0;
+        style.right = 0;
+        style.bottom = 0;
+        style.left = 0;
+        !!model && this.setModel(model);
+      }
+      getView(){
+        return this._view;
+      }
+      setModel(model){
+        this._model = model;
+        model.addListener(this.invalidate.bind(this));
+      }
+      addToDOM(parentNode){
+        if(!!parentNode) {
+          parentNode.appendChild(this.getView());
+        } else {
+          document.body.appendChild(this.getView());
+        }
+        this.invalidate();
+      }
+    }
+    class SimulateGraphView extends View{
+      invalidate(){
+        const view = this.getView();
+        let innerHTML = '';
+        view.innerHTML = '';
+        this._model.each((data) => {
+          innerHTML += data.getElString();
+        })
+        view.innerHTML = innerHTML;
+      }
+    }
+    class TableView extends View{
+      constructor(model){
+        super(model);
+        this.content = `
+          <table>
+            <tr>
+              <th>name</th>
+              <th>x</th>
+              <th>y</th>
+              <th>width</th>
+              <th>height</th>
+            </tr>
+            __content__
+          <table>
+        `;
+      }
+      invalidate(){
+        const view = this.getView();
+        let content = '';
+        view.innerHTML = '';
+        this._model.each((data) => {
+          content += `
+            <tr>
+              <td>${data.getName()}</td>
+              <td>${data.getX()}</td>
+              <td>${data.getY()}</td>
+              <td>${data.getWidth()}</td>
+              <td>${data.getHeight()}</td>
+            </tr>
+          `
+        })
+        view.innerHTML = this.content.replace(/__content__/, content);
+      }
+    }
+    class Model{
+      constructor() {
+        this._datas = [];
+        this.listeners = [];
+      }
+      addListener(fn){
+        this.listeners.push(fn);
+      }
+      handleDataChange(){
+        this.listeners.forEach(fn => fn());
+      }
+      add(node){
+        node.setModel(this);
+        if(this._datas.includes(node)){
+          return;
+        }
+        this._datas.push(node);
+        this.handleDataChange();
+      }
+      each(fn){
+        this._datas.forEach((data, index, list) => {
+          fn(data, index, list)
+        })
+      }
+      getDatas(){
+        return this._datas;
+      }
+    }
+    class Node{
+      constructor() {
+        this._node = document.createElement('div');
+        this._name = '';
+        const style = this._node.style;
+        style.position = 'absolute';
+        style.top = 0;
+        style.left = 0;
+        style.height = '100px';
+        style.width = '100px';
+        style.overflow = 'hidden';
+        style.background = '#D8D8D8';
+      }
+      getElString(){
+        return this._node.outerHTML;
+      }
+      fireChange(){
+        !!this._model && this._model.handleDataChange();
+      }
+      setPosition(x, y){
+        const style = this._node.style;
+        style.left = x + 'px';
+        style.top = y + 'px';
+        this.fireChange();
+      }
+      setX(x){
+        this._node.style.left = x + 'px';
+        this.fireChange()
+      }
+      setY(y){
+        this._node.style.top = y + 'px';
+        this.fireChange();
+      }
+      getPosition(){
+        return {x: this._node.style.left, y: this._node.style.top}
+      }
+      getX(){
+        return this._node.style.left;
+      }
+      getY(){
+        return this._node.style.top;
+      }
+      setImage(url){
+        const style = this._node.style;
+        if(!!url){
+          this._node.innerHTML = '';
+          style.background = `url(${url}) no-repeat center`;
+          this.fireChange();
+        }
+      }
+      setSize(width, height){
+        const style = this._node.style;
+        style.width = width + 'px';
+        style.height = height + 'px';
+        this.fireChange();
+      }
+      setWidth(width){
+        this._node.style.width = width + 'px';
+        this.fireChange()
+      }
+      getWidth(){
+        return this._node.style.width;
+      }
+      setHeigth(height){
+        this._node.style.height = height + 'px';
+        this.fireChange();
+      }
+      getHeight(height){
+        return this._node.style.height;
+      }
+      setName(name){
+        this._name = name;
+        this._node.innerHTML = name;
+        this.fireChange();
+      }
+      getName(){
+        return this._name;
+      }
+      setModel(model){
+        this._model = model;
+      }
+    }
+    function init(){
+      model = new Model();
+      view = new SimulateGraphView(model);
+      view.addToDOM(document.getElementById('view1'));
+
+      node1 = new Node();
+      node1.setPosition(30, 30);
+      node1.setName('我是node1');
+      model.add(node1);
+
+      node2 = new Node();
+      node2.setPosition(30, 150);
+      node2.setName('我是node2');
+      node2.setSize(200, 80)
+      node2.setImage('http://www.hightopo.com/images/logo.png');
+      model.add(node2);
+
+      view2 = new SimulateGraphView(model);
+      view2.addToDOM(document.getElementById('view2'));
+
+      table = new TableView(model);
+      table.addToDOM(document.getElementById('view3'));
+    }
+  </script>
+</body>
+</html>
